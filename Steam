@@ -1,0 +1,251 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <conio.h>
+#include <ctype.h>
+
+#define ARQ "Dados.dat" /* arquivo com os dados*/
+#define CADASTRAR_JOGO '1'
+#define ALTERAR_JOGO '2'
+#define APAGAR_JOGO '3'
+#define LISTAR_JOGO '4'
+#define PESQUISAR_JOGO '5'
+#define OP_SAIR '0'
+
+
+char *MainMenu[]={
+    "1. Inserir registro",
+    "2. Alterar registro",
+    "3. Apagar registro",
+    "4. Listar registros",
+    "5. Pesquisar",
+    "0. Sair",
+    NULL /* ACABARAM AS OPÇÕES*/
+};
+
+FILE *fp; /*variável global pois é útil ao longo do programa*/
+
+typedef struct{
+    char nome[30];
+    char plataforma[30];
+    char tipo[30];
+    float preco;
+    float nota;
+    int ano;
+    char fabricante[30];
+    int rank;
+    int codigo;
+    char Status; /* '*' indica que o registro está apagado*/
+}Jogo;
+
+void Mensagem(char *msg);
+
+/* lê os dados de um registro introduzido pelo usuário*/
+void Ler_Jogo(Jogo *p){
+    printf("Nome: "); gets(p->nome);
+    printf("Plataforma: "); gets(p->plataforma);
+    printf("Tipo de jogo: "); gets(p->tipo);
+    printf("Fabricante: "); gets(p->fabricante);
+    printf("Preco: R$"); scanf("%f",&p->preco);
+    printf("Nota: "); scanf("%f",&p->nota);
+    printf("Ano: "); scanf("%d",&p->ano);
+    printf("Rank: "); scanf("%d",&p->rank);
+    printf("Numero de Registro: "); scanf("%d",&p->codigo);
+    p->Status = ' ';
+    fflush(stdin);
+}
+
+
+/*Mostra na tela os dados existentes no registro*/
+void Mostrar_Jogo(Jogo p){
+    printf("Nome: %s\n", p.nome);
+    printf("Plataforma: %s\n", p.plataforma);
+    printf("Tipo de jogo: %s\n", p.tipo);
+    printf("Fabricante: %s\n", p.fabricante);
+    printf("Preco: R$%.2f\n", p.preco);
+    printf("Nota: %.2f\n", p.nota);
+    printf("Ano: %d\n", p.ano);
+    printf("Rank: %d\n", p.rank);
+    printf("Numero de Registro: %d\n\n", p.codigo);
+}
+
+/*Adiciona uma jogo ao arquivo*/
+void Adiciona_Jogo(Jogo p){
+    fseek(fp, 0L, SEEK_END);
+    if(fwrite(&p, sizeof(p), 1, fp)!=1)
+        Mensagem("Adicionar jogo: Falhou a escrita do registro");
+}
+
+/*Colocar uma mensagem na tela*/
+void Mensagem(char *msg){
+    printf(msg);
+    getchar();
+}
+
+
+
+/*Verificar se o arquivo já existe. Se não existir, ele é criado
+se já existir, abre-o em modo de leitura e escrita (r+b)
+*/
+void Inic(){
+    fp= fopen(ARQ, "r+b"); //tentar abrir
+    if(fp==NULL){
+        fp = fopen(ARQ, "w+b"); // criar o arquivo
+        if(fp==NULL){
+            printf(stderr," Erro fatal: impossível criar arquivo de dados\n");
+            exit(1);
+        }
+    }
+}
+
+/* Faz um menu simples com as opções do vetor de strings.
+seleciona a opção, usando o primeiro caracter de cada string.
+devolve o primeiro caracter da opção.
+*/
+char Menu(char *opcoes[]){
+    int i;
+    char ch;
+    while(1){
+        /*CLS */
+        printf("\n\n\n\n\n");
+            for(i=0; opcoes[i]!=NULL; i++)
+                printf("\t\t%s\n\n",opcoes[i]);
+
+            printf("\n\n\t\tOpcao: ");
+            ch = getchar(); fflush(stdin);
+            for(i=0; opcoes[i]!= NULL; i++)
+                if(opcoes[i][0]==ch)
+                    return ch;
+    }
+}
+
+void Inserir_Jogo(){
+    Jogo x;
+    Ler_Jogo(&x);
+    Adiciona_Jogo(x);
+}
+
+void Alterar_Jogo(){
+    Jogo x;
+    long int n_reg;
+    printf("Qual o numero do registro: ");
+    scanf("%ld", & n_reg); fflush(stdin);
+    if(fseek(fp, (n_reg-1)*sizeof(Jogo), SEEK_SET)!=0){
+        Mensagem("Registro inexistente ou problemas no posicionamento!!!");
+        return;
+    }
+    if(fread(&x, sizeof(Jogo), 1, fp)!= 1){
+        Mensagem("Problemas na leitura do registro!!!");
+        return;
+    }
+
+    if(x.Status=='*'){
+        Mensagem("Um registro apagado não pode ser alterado!!! \n\n");
+        return;
+    }
+
+    printf("\n\n Dados Atuais \n\n");
+    Mostrar_Jogo(x);
+    printf("\n\n Novos dados \n\n");
+    Ler_Jogo(&x);
+
+    // recuar um registro no arquivo
+    fseek(fp, -(long) sizeof(Jogo), SEEK_CUR);
+    // reescrever o registro;
+    fwrite(&x, sizeof(Jogo), 1, fp);
+    fflush(fp); /*despejar os arquivos no disco rígido*/
+}
+
+void Apagar_Jogo(){
+    Jogo x;
+    long int n_reg;
+    char resp;
+
+    printf("Qual o numero do registro: ");
+    scanf("%ld", & n_reg); fflush(stdin);
+    if(fseek(fp, (n_reg - 1)*sizeof(Jogo), SEEK_SET)!= 0){
+        Mensagem("Registro inexistente ou problemas no registro!!!");
+        return;
+    }
+    if(fread(&x, sizeof(Jogo), 1, fp)!= 1){
+        Mensagem("Problema na leitura do registro!!!");
+        return;
+    }
+    if(x.Status=='*'){
+        Mensagem("Registro já está apagado!!!\n\n");
+    }
+    printf("\n\n Dados atuais \n\n");
+    Mostrar_Jogo(x);
+    printf("\n\n Apagar o registro (s/n)???: "); resp = getchar();
+    fflush(stdin);
+    if(toupper(resp)!= 'S')return;
+
+    x.Status= '*';
+    // recuar um registro no arquivo
+    fseek(fp, -(long) sizeof(Jogo), SEEK_CUR);
+    // reescrever o registro;
+    fwrite(&x, sizeof(Jogo), 1, fp);
+    fflush(fp); /*Despejar os arquivos no disco rígido*/
+}
+
+void Listar(){
+
+    long int n_Linhas = 0;
+    Jogo reg;
+    rewind(fp);
+    while(1){
+        if(fread(&reg, sizeof(reg), 1, fp)!= 1)break; /*Sair do laço*/
+        if(reg.Status=='*') continue; /*Passa ao próximo*/
+        Mostrar_Jogo(reg);
+        n_Linhas++;
+        if(n_Linhas%20==0)
+            Mensagem("Pressione <Enter> para continuar .  .  .");
+    }
+    Mensagem("\n\n Pressione <Enter> para continuar .  .  ."); /*No fim da listagem*/
+}
+
+void Pesquisar_Jogo(){
+    Jogo x;
+    long int n_reg;
+    printf("Qual o numero do registro: ");
+    scanf("%ld", & n_reg); fflush(stdin);
+    if(fseek(fp, (n_reg-1)*sizeof(Jogo), SEEK_SET)!=0){
+        Mensagem("Registro inexistente ou problemas no posicionamento!!!");
+        return;
+    }
+    if(fread(&x, sizeof(Jogo), 1, fp)!= 1){
+        Mensagem("Problemas na leitura do registro!!!");
+        return;
+    }
+
+    if(x.Status=='*'){
+        Mensagem("Um registro apagado não pode ser consultado!!! \n\n");
+        return;
+    }
+
+    printf("\n\n Dados Atuais \n\n");
+    Mostrar_Jogo(x);
+
+    Mensagem("\n\n Pressione <Enter> para continuar .  .  ."); /*No fim da listagem*/
+}
+
+
+int main(int argc, char *argv[]) {
+
+    char opcao;
+    Inic();
+    while((opcao = Menu(MainMenu))!= OP_SAIR){
+        switch(opcao){
+            case CADASTRAR_JOGO: Inserir_Jogo(); break;
+            case ALTERAR_JOGO: Alterar_Jogo(); break;
+            case APAGAR_JOGO: Apagar_Jogo(); break;
+            case LISTAR_JOGO: Listar(); break;
+            case PESQUISAR_JOGO:Pesquisar_Jogo();
+
+
+        }
+
+    }
+
+    return 0;
+}
